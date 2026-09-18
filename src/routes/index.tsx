@@ -331,7 +331,26 @@ function Mars2100() {
   const [thinking, setThinking] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [countdown, setCountdown] = useState("18:06:42");
+  const [showIntro, setShowIntro] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setShowIntro(false);
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => setShowIntro(false), 4000);
+    return () => {
+      window.clearTimeout(timer);
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showIntro) document.body.style.overflow = "";
+  }, [showIntro]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("mars-2100-concierge");
@@ -466,6 +485,9 @@ function Mars2100() {
 
   return (
     <div className="scanlines starfield min-h-screen overflow-x-hidden bg-background text-foreground">
+      <AnimatePresence>
+        {showIntro ? <IntroSequence onDone={() => setShowIntro(false)} /> : null}
+      </AnimatePresence>
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8">
           <a href="#top" className="flex items-center gap-3" aria-label="Mars 2100 home">
@@ -1365,6 +1387,135 @@ function Mars2100() {
         {chatOpen ? <X /> : <Bot />}
       </Button>
     </div>
+  );
+}
+
+function IntroSequence({ onDone }: { onDone: () => void }) {
+  const streaks = useMemo(
+    () =>
+      Array.from({ length: 34 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        height: 12 + Math.random() * 26,
+        delay: Math.random() * 0.9,
+        duration: 0.5 + Math.random() * 0.5,
+        opacity: 0.35 + Math.random() * 0.6,
+      })),
+    [],
+  );
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-background"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.6, ease: "easeInOut" } }}
+      role="dialog"
+      aria-label="Intro animation"
+    >
+      {/* deep-space backdrop */}
+      <div className="starfield absolute inset-0 opacity-60" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_30%,var(--background)_85%)]" />
+
+      {/* Phase 1: Earth + launching rocket */}
+      <motion.div
+        className="absolute bottom-[-90px] left-[-60px] size-64 rounded-full bg-[radial-gradient(circle_at_35%_30%,oklch(0.7_0.13_230),oklch(0.42_0.12_255)_45%,oklch(0.16_0.06_260)_80%)] shadow-[0_0_120px_oklch(0.6_0.13_240/45%)]"
+        initial={{ scale: 1, opacity: 1 }}
+        animate={{ scale: 0.4, opacity: 0 }}
+        transition={{ delay: 1.1, duration: 1, ease: "easeIn" }}
+        aria-hidden
+      />
+      <motion.div
+        className="absolute left-[10%] bottom-[16%]"
+        initial={{ x: -20, y: 80, opacity: 0, rotate: 28 }}
+        animate={{ x: [-20, 120, 460], y: [80, -80, -520], opacity: [0, 1, 0], rotate: 32 }}
+        transition={{ duration: 1.5, ease: "easeIn", times: [0, 0.35, 1] }}
+        aria-hidden
+      >
+        <div className="relative">
+          <Rocket className="size-10 rotate-45 text-cyan drop-shadow-[0_0_14px_var(--cyan)]" />
+          <span className="intro-rocket-flame absolute -bottom-2 left-1 h-6 w-2 origin-top rounded-full bg-[linear-gradient(to_bottom,var(--orange),transparent)]" />
+        </div>
+      </motion.div>
+
+      {/* Phase 2: warp-speed starfield streaks */}
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ delay: 0.9, duration: 1.5, times: [0, 0.2, 0.7, 1] }}
+        aria-hidden
+      >
+        {streaks.map((s) => (
+          <span
+            key={s.id}
+            className="intro-streak absolute top-0 w-px bg-gradient-to-b from-transparent via-cyan to-transparent"
+            style={{
+              left: `${s.left}%`,
+              height: `${s.height}%`,
+              animationDelay: `${s.delay}s`,
+              animationDuration: `${s.duration}s`,
+              opacity: s.opacity,
+            }}
+          />
+        ))}
+      </motion.div>
+
+      {/* Phase 3: Mars arrival */}
+      <motion.div
+        className="absolute size-72 rounded-full bg-[radial-gradient(circle_at_35%_28%,var(--orange),oklch(0.38_0.14_35)_38%,oklch(0.12_0.04_280)_78%)] shadow-[inset_-30px_-24px_70px_oklch(0.08_0.03_260),0_0_120px_oklch(0.76_0.17_54/30%)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.05, 1], opacity: [0, 1, 1] }}
+        transition={{ delay: 1.95, duration: 1.1, ease: "easeOut", times: [0, 0.8, 1] }}
+        aria-hidden
+      >
+        <span className="absolute inset-[14%] rounded-full border border-cyan/15" />
+        <span className="absolute inset-[30%] rounded-full border border-cyan/10" />
+      </motion.div>
+
+      {/* Phase 4: holographic logo assembly */}
+      <motion.div
+        className="relative z-10 text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2.95 }}
+      >
+        <div className="relative inline-block overflow-hidden">
+          <span className="intro-holo-scan absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-cyan/40 to-transparent" />
+          <div className="intro-logo-glitch font-display text-5xl font-bold uppercase tracking-[0.18em] md:text-7xl">
+            Mars <span className="text-cyan">2100</span>
+          </div>
+        </div>
+        <motion.div
+          className="mt-4 text-[11px] font-semibold uppercase tracking-[0.42em] text-muted-foreground"
+          initial={{ opacity: 0, letterSpacing: "0.7em" }}
+          animate={{ opacity: 1, letterSpacing: "0.42em" }}
+          transition={{ delay: 3.4, duration: 0.5 }}
+        >
+          Luxury Interplanetary Travel
+        </motion.div>
+      </motion.div>
+
+      {/* early-phase status line */}
+      <motion.div
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-[0.3em] text-cyan"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 2.9, times: [0, 0.1, 0.75, 1] }}
+        aria-hidden
+      >
+        Launch sequence initiated
+      </motion.div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onDone}
+        className="absolute right-5 top-5 h-9 gap-2 rounded-none border-border bg-background/40 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground backdrop-blur hover:text-cyan"
+      >
+        Skip intro
+        <ChevronRight className="size-3.5" />
+      </Button>
+    </motion.div>
   );
 }
 
