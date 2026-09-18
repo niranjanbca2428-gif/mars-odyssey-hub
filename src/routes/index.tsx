@@ -18,8 +18,6 @@ import {
   Radiation,
   Rocket,
   ShieldCheck,
-  Thermometer,
-  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -157,6 +155,18 @@ const initialPlanner: Planner = {
   activities: ["Olympus summit flight"],
 };
 
+const fallbackCraft = { name: "Luxury Cruiser" as Craft, days: 46, price: 4.6, note: "Private suite · 6 guests" };
+const fallbackDestination = destinations[0] ?? {
+  name: "Olympus Dome" as Destination,
+  label: "Olympus Dome Resort",
+  region: "Tharsis Montes",
+  description: "Cliff-edge infinity pools beneath a climate-controlled crystal canopy.",
+  image: olympusImage,
+  tag: "12 residences left",
+  coordinates: "18.65°N · 226.2°E",
+};
+const plannerTitles = ["Choose Earth departure", "Select your vessel", "Choose Mars arrival", "Define your residence", "Curate your experiences"];
+
 const assistantGreeting: ChatMessage = {
   id: "welcome",
   role: "assistant",
@@ -206,15 +216,18 @@ function Mars2100() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const craft = craftOptions.find((item) => item.name === planner.craft) ?? craftOptions[1];
+  const craft = craftOptions.find((item) => item.name === planner.craft) ?? fallbackCraft;
+  const activePlace = destinations[activeDestination] ?? fallbackDestination;
   const estimate = useMemo(() => {
     const suiteMultiplier = planner.tier === "Private Habitat" ? 2.3 : planner.tier === "Zero-G Penthouse" ? 1.55 : 1;
     return (craft.price * planner.travellers * suiteMultiplier + planner.activities.length * 0.18).toFixed(1);
   }, [craft.price, planner]);
 
   const chooseDestination = (index: number) => {
+    const destination = destinations[index];
+    if (!destination) return;
     setActiveDestination(index);
-    setPlanner((current) => ({ ...current, destination: destinations[index].name }));
+    setPlanner((current) => ({ ...current, destination: destination.name }));
   };
 
   const generateRecommendation = (input: string): Recommendation => {
@@ -348,9 +361,9 @@ function Mars2100() {
             <div>
               <SectionHeading index="02" eyebrow="Orbital atlas" title="Touch down where the future lives" copy="Select a signal to inspect the region and add it to your passage." />
               <div className="hud-panel hud-corners mt-8 p-5">
-                <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-[0.18em] text-cyan">Active signal</div><h3 className="font-display mt-2 text-xl uppercase">{destinations[activeDestination].label}</h3></div><MapPin className="text-orange" /></div>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">{destinations[activeDestination].description}</p>
-                <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs"><div><span className="block text-muted-foreground">Coordinates</span><span className="mt-1 block text-foreground">{destinations[activeDestination].coordinates}</span></div><div><span className="block text-muted-foreground">Surface link</span><span className="mt-1 flex items-center gap-2 text-cyan"><span className="size-1.5 rounded-full bg-cyan"/> Stable</span></div></div>
+                <div className="flex items-center justify-between"><div><div className="text-[10px] uppercase tracking-[0.18em] text-cyan">Active signal</div><h3 className="font-display mt-2 text-xl uppercase">{activePlace.label}</h3></div><MapPin className="text-orange" /></div>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">{activePlace.description}</p>
+                <div className="mt-5 grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs"><div><span className="block text-muted-foreground">Coordinates</span><span className="mt-1 block text-foreground">{activePlace.coordinates}</span></div><div><span className="block text-muted-foreground">Surface link</span><span className="mt-1 flex items-center gap-2 text-cyan"><span className="size-1.5 rounded-full bg-cyan"/> Stable</span></div></div>
               </div>
             </div>
             <div className="map-grid hud-panel hud-corners relative min-h-[470px] overflow-hidden">
@@ -358,7 +371,7 @@ function Mars2100() {
                 <div className="float-slow relative aspect-square w-[76%] max-w-[430px] rounded-full border border-orange/50 bg-[radial-gradient(circle_at_35%_28%,var(--orange),oklch(0.38_0.14_35)_35%,oklch(0.12_0.04_280)_72%)] shadow-[inset_-35px_-28px_80px_var(--background),0_0_90px_oklch(0.76_0.17_54/18%)]">
                   <div className="absolute inset-[10%] rounded-full border border-cyan/10" />
                   <div className="absolute inset-[22%] rounded-full border border-cyan/10" />
-                  {[{ top: "22%", left: "31%" }, { top: "57%", left: "24%" }, { top: "42%", left: "70%" }].map((point, index) => <Button key={destinations[index].name} size="icon" variant={activeDestination === index ? "default" : "outline"} className={`pulse-ring absolute rounded-full ${activeDestination === index ? "scale-110" : ""}`} style={point} onClick={() => chooseDestination(index)} aria-label={`Select ${destinations[index].label}`}><MapPin /></Button>)}
+                  {[{ top: "22%", left: "31%" }, { top: "57%", left: "24%" }, { top: "42%", left: "70%" }].map((point, index) => { const destination = destinations[index]; return destination ? <Button key={destination.name} size="icon" variant={activeDestination === index ? "default" : "outline"} className={`pulse-ring absolute rounded-full ${activeDestination === index ? "scale-110" : ""}`} style={point} onClick={() => chooseDestination(index)} aria-label={`Select ${destination.label}`}><MapPin /></Button> : null; })}
                 </div>
               </div>
               <div className="absolute left-4 top-4 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">MARS / SURFACE CARTOGRAPHY / M2100.9</div>
@@ -374,11 +387,11 @@ function Mars2100() {
               <div className="mb-8 flex items-center gap-2">{[1,2,3,4,5].map((item) => <button key={item} type="button" onClick={() => setStep(item)} aria-label={`Go to step ${item}`} className={`h-1 flex-1 transition-colors ${item <= step ? "bg-cyan" : "bg-border"}`} />)}</div>
               <AnimatePresence mode="wait">
                 <motion.div key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.22 }}>
-                  <div className="mb-8"><span className="text-[10px] uppercase tracking-[0.18em] text-cyan">Step 0{step} / 05</span><h3 className="font-display mt-2 text-2xl uppercase">{["Choose Earth departure", "Select your vessel", "Choose Mars arrival", "Define your residence", "Curate your experiences"][step-1]}</h3></div>
+                  <div className="mb-8"><span className="text-[10px] uppercase tracking-[0.18em] text-cyan">Step 0{step} / 05</span><h3 className="font-display mt-2 text-2xl uppercase">{plannerTitles[step - 1] ?? plannerTitles[0]}</h3></div>
                   {step === 1 && <ChoiceGrid values={["Singapore Orbital", "Dubai Celestial Port", "New York Skyhook", "London Ascension"]} selected={planner.departure} onSelect={(departure) => setPlanner((p) => ({...p, departure}))} icon={Earth} />}
                   {step === 2 && <div className="grid gap-3 md:grid-cols-3">{craftOptions.map((option) => <Button key={option.name} variant={planner.craft === option.name ? "default" : "outline"} className="h-auto min-h-36 flex-col items-start whitespace-normal p-4 text-left" onClick={() => setPlanner((p) => ({...p, craft: option.name}))}><Rocket className="mb-5"/><span className="font-display text-xs uppercase">{option.name}</span><span className="mt-2 text-[10px] opacity-70">{option.days} days · {option.note}</span></Button>)}</div>}
                   {step === 3 && <div className="grid gap-3 md:grid-cols-3">{destinations.map((item, index) => <Button key={item.name} variant={planner.destination === item.name ? "default" : "outline"} className="h-auto min-h-32 flex-col items-start whitespace-normal p-4 text-left" onClick={() => chooseDestination(index)}><MapPin className="mb-5"/><span className="font-display text-xs uppercase">{item.name}</span><span className="mt-2 text-[10px] opacity-70">{item.region}</span></Button>)}</div>}
-                  {step === 4 && <div className="space-y-8"><div><div className="mb-4 flex items-center justify-between"><label className="text-xs uppercase tracking-[0.14em]">Travellers</label><div className="flex items-center gap-3"><Button size="icon" variant="outline" onClick={() => setPlanner((p) => ({...p, travellers: Math.max(1,p.travellers-1)}))}><Minus/></Button><span className="font-display w-6 text-center text-xl">{planner.travellers}</span><Button size="icon" variant="outline" onClick={() => setPlanner((p) => ({...p, travellers: Math.min(8,p.travellers+1)}))}><Plus/></Button></div></div><Slider value={[planner.travellers]} min={1} max={8} step={1} onValueChange={(value) => setPlanner((p) => ({...p, travellers: value[0]}))}/></div><ChoiceGrid values={["Panorama Suite", "Zero-G Penthouse", "Private Habitat"]} selected={planner.tier} onSelect={(tier) => setPlanner((p) => ({...p, tier: tier as Tier}))} icon={Crown}/></div>}
+                  {step === 4 && <div className="space-y-8"><div><div className="mb-4 flex items-center justify-between"><label className="text-xs uppercase tracking-[0.14em]">Travellers</label><div className="flex items-center gap-3"><Button size="icon" variant="outline" onClick={() => setPlanner((p) => ({...p, travellers: Math.max(1,p.travellers-1)}))}><Minus/></Button><span className="font-display w-6 text-center text-xl">{planner.travellers}</span><Button size="icon" variant="outline" onClick={() => setPlanner((p) => ({...p, travellers: Math.min(8,p.travellers+1)}))}><Plus/></Button></div></div><Slider value={[planner.travellers]} min={1} max={8} step={1} onValueChange={(value) => setPlanner((p) => ({...p, travellers: value[0] ?? p.travellers}))}/></div><ChoiceGrid values={["Panorama Suite", "Zero-G Penthouse", "Private Habitat"]} selected={planner.tier} onSelect={(tier) => setPlanner((p) => ({...p, tier: tier as Tier}))} icon={Crown}/></div>}
                   {step === 5 && <div className="flex flex-wrap gap-3">{activities.map((activity) => { const active = planner.activities.includes(activity); return <Button key={activity} variant={active ? "default" : "outline"} onClick={() => setPlanner((p) => ({...p, activities: active ? p.activities.filter((item) => item !== activity) : [...p.activities, activity]}))}>{active && <Check/>}{activity}</Button>})}</div>}
                 </motion.div>
               </AnimatePresence>
