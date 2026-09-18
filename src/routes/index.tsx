@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  AlertTriangle,
   ArrowRight,
   Bot,
   Check,
@@ -13,11 +14,13 @@ import {
   MapPin,
   Menu,
   Minus,
+  Mountain,
   Orbit,
   Plus,
   Radiation,
   Rocket,
   ShieldCheck,
+  Thermometer,
   X,
   Zap,
 } from "lucide-react";
@@ -26,6 +29,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import olympusImage from "@/assets/olympus-dome.jpg";
 import vallesImage from "@/assets/valles-cruise.jpg";
 import elysiumImage from "@/assets/elysium-colony.jpg";
+
+const marinerisImage =
+  "https://images.pexels.com/photos/7527862/pexels-photo-7527862.jpeg?auto=compress&cs=tinysrgb&h=650&w=940";
 import {
   Conversation,
   ConversationContent,
@@ -71,8 +77,20 @@ export const Route = createFileRoute("/")({
 });
 
 type Craft = "Standard Shuttle" | "Luxury Cruiser" | "Private Yacht";
-type Destination = "Olympus Dome" | "Valles Skyport" | "Elysium Colony";
+type Destination = "Olympus Dome" | "Valles Skyport" | "Elysium Colony" | "Marineris Descent";
 type Tier = "Panorama Suite" | "Zero-G Penthouse" | "Private Habitat";
+type DangerLevel = "Low" | "Moderate" | "High" | "Extreme";
+
+type RiskData = {
+  distance: string;
+  distancePercent: number;
+  tempRange: string;
+  tempPercent: number;
+  terrain: string;
+  terrainIcon: typeof Mountain;
+  dangerLevel: DangerLevel;
+  dangerScore: number;
+};
 
 type Planner = {
   departure: string;
@@ -106,6 +124,16 @@ const destinations = [
     image: olympusImage,
     tag: "12 residences left",
     coordinates: "18.65°N · 226.2°E",
+    risk: {
+      distance: "1,240 km from Elysium Base",
+      distancePercent: 25,
+      tempRange: "-20°C to 22°C",
+      tempPercent: 20,
+      terrain: "Shielded / Pressurised Dome",
+      terrainIcon: ShieldCheck,
+      dangerLevel: "Low" as DangerLevel,
+      dangerScore: 2,
+    } as RiskData,
   },
   {
     name: "Valles Skyport" as Destination,
@@ -115,6 +143,16 @@ const destinations = [
     image: vallesImage,
     tag: "Private deck available",
     coordinates: "13.9°S · 59.2°W",
+    risk: {
+      distance: "3,800 km from Elysium Base",
+      distancePercent: 55,
+      tempRange: "-80°C to 5°C",
+      tempPercent: 55,
+      terrain: "Canyon Rim / Thermal Updrafts",
+      terrainIcon: Orbit,
+      dangerLevel: "Moderate" as DangerLevel,
+      dangerScore: 4,
+    } as RiskData,
   },
   {
     name: "Elysium Colony" as Destination,
@@ -124,6 +162,36 @@ const destinations = [
     image: elysiumImage,
     tag: "Members first",
     coordinates: "24.7°N · 150.0°E",
+    risk: {
+      distance: "0 km (home base)",
+      distancePercent: 0,
+      tempRange: "-15°C to 25°C",
+      tempPercent: 15,
+      terrain: "Flat Plains / Pressurised Roads",
+      terrainIcon: Earth,
+      dangerLevel: "Low" as DangerLevel,
+      dangerScore: 1,
+    } as RiskData,
+  },
+  {
+    name: "Marineris Descent" as Destination,
+    label: "The Marineris Descent",
+    region: "Coprates Chasma · Floor",
+    description:
+      "Only the boldest travellers dare. A roped descent into the solar system’s deepest canyon — 7 km of unstable cliff, loose regolith and zero rescue range.",
+    image: marinerisImage,
+    tag: "Extreme risk · 4 slots/year",
+    coordinates: "13.9°S · 59.2°W",
+    risk: {
+      distance: "4,200 km from Elysium Base",
+      distancePercent: 85,
+      tempRange: "-125°C to 20°C",
+      tempPercent: 92,
+      terrain: "Unstable Cliff Edges / Loose Regolith",
+      terrainIcon: Mountain,
+      dangerLevel: "Extreme" as DangerLevel,
+      dangerScore: 9,
+    } as RiskData,
   },
 ];
 
@@ -139,6 +207,7 @@ const activities = [
   "Phobos supper club",
   "Canyon sky cruise",
   "Colony atelier tour",
+  "Marineris cliff descent",
 ];
 
 const initialPlanner: Planner = {
@@ -164,6 +233,7 @@ const fallbackDestination = destinations[0] ?? {
   image: olympusImage,
   tag: "12 residences left",
   coordinates: "18.65°N · 226.2°E",
+  risk: destinations[0].risk,
 };
 const plannerTitles = [
   "Choose Earth departure",
@@ -228,6 +298,8 @@ function Mars2100() {
 
   const craft = craftOptions.find((item) => item.name === planner.craft) ?? fallbackCraft;
   const activePlace = destinations[activeDestination] ?? fallbackDestination;
+  const selectedDestination = destinations.find((item) => item.name === planner.destination) ?? fallbackDestination;
+  const selectedRisk = selectedDestination.risk;
   const estimate = useMemo(() => {
     const suiteMultiplier =
       planner.tier === "Private Habitat" ? 2.3 : planner.tier === "Zero-G Penthouse" ? 1.55 : 1;
@@ -247,11 +319,13 @@ function Mars2100() {
   const generateRecommendation = (input: string): Recommendation => {
     const value = input.toLowerCase();
     const destination: Destination =
-      value.includes("adventure") || value.includes("canyon") || value.includes("cruise")
-        ? "Valles Skyport"
-        : value.includes("privacy") || value.includes("villa") || value.includes("exclusive")
-          ? "Elysium Colony"
-          : "Olympus Dome";
+      value.includes("danger") || value.includes("extreme") || value.includes("adrenaline") || value.includes("marineris") || value.includes("descent")
+        ? "Marineris Descent"
+        : value.includes("adventure") || value.includes("canyon") || value.includes("cruise")
+          ? "Valles Skyport"
+          : value.includes("privacy") || value.includes("villa") || value.includes("exclusive")
+            ? "Elysium Colony"
+            : "Olympus Dome";
     const craftChoice: Craft =
       value.includes("unlimited") || value.includes("private") || value.includes("million")
         ? "Private Yacht"
@@ -265,11 +339,13 @@ function Mars2100() {
           ? "Zero-G Penthouse"
           : "Panorama Suite";
     const activity =
-      destination === "Valles Skyport"
-        ? "Canyon sky cruise"
-        : destination === "Elysium Colony"
-          ? "Private rover safari"
-          : "Olympus summit flight";
+      destination === "Marineris Descent"
+        ? "Marineris cliff descent"
+        : destination === "Valles Skyport"
+          ? "Canyon sky cruise"
+          : destination === "Elysium Colony"
+            ? "Private rover safari"
+            : "Olympus summit flight";
     return { destination, craft: craftChoice, tier, activity };
   };
 
@@ -281,7 +357,17 @@ function Mars2100() {
     setThinking(true);
     window.setTimeout(() => {
       const rec = generateRecommendation(clean);
-      const response = `I’ve matched your brief to **${rec.destination}** aboard a **${rec.craft}**. I recommend the **${rec.tier}**, with a private ${rec.activity.toLowerCase()}. This pairing balances your desired pace, privacy and experience profile.`;
+      const dest = destinations.find((item) => item.name === rec.destination);
+      const risk = dest?.risk;
+      const riskNote =
+        risk?.dangerLevel === "Extreme"
+          ? ` This expedition carries EXTREME risk — I strongly recommend an advanced life-support package and a minimum 3-day acclimatisation protocol.`
+          : risk?.dangerLevel === "High"
+            ? ` This expedition carries HIGH risk — a reinforced life-support package is advised.`
+            : risk?.dangerLevel === "Moderate"
+              ? ` This expedition carries MODERATE risk — standard precautions apply.`
+              : "";
+      const response = `I’ve matched your brief to **${rec.destination}** aboard a **${rec.craft}**. I recommend the **${rec.tier}**, with a private ${rec.activity.toLowerCase()}. This pairing balances your desired pace, privacy and experience profile.${riskNote}`;
       setChatMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "assistant", text: response, recommendation: rec },
@@ -469,14 +555,16 @@ function Mars2100() {
             index="01"
             eyebrow="Curated destinations"
             title="The finest addresses on Mars"
-            copy="Three extraordinary ways to experience the red planet, each reserved in limited numbers."
+            copy="Four extraordinary ways to experience the red planet — three luxury retreats and one extreme expedition. Each reserved in limited numbers."
           />
-          <div className="mt-12 grid gap-5 lg:grid-cols-3">
-            {destinations.map((destination, index) => (
+          <div className="mt-12 grid gap-5 lg:grid-cols-4">
+            {destinations.map((destination, index) => {
+              const isDanger = destination.risk.dangerLevel === "Extreme" || destination.risk.dangerLevel === "High";
+              return (
               <motion.article
                 key={destination.name}
                 whileHover={{ y: -6 }}
-                className={`hud-panel hud-corners group overflow-hidden ${activeDestination === index ? "border-cyan" : ""}`}
+                className={`hud-panel hud-corners group overflow-hidden ${activeDestination === index ? (isDanger ? "border-destructive" : "border-cyan") : ""}`}
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
@@ -488,7 +576,8 @@ function Mars2100() {
                     className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background to-transparent" />
-                  <span className="absolute left-4 top-4 border border-orange/60 bg-background/75 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-orange backdrop-blur">
+                  <span className={`absolute left-4 top-4 border bg-background/75 px-2 py-1 text-[9px] uppercase tracking-[0.16em] backdrop-blur ${isDanger ? "border-destructive/60 text-destructive" : "border-orange/60 text-orange"}`}>
+                    {isDanger && <AlertTriangle className="mr-1 inline size-3" />}
                     {destination.tag}
                   </span>
                   <span className="absolute bottom-4 right-4 font-display text-4xl text-foreground/15">
@@ -496,7 +585,7 @@ function Mars2100() {
                   </span>
                 </div>
                 <div className="p-5">
-                  <div className="text-[10px] uppercase tracking-[0.18em] text-cyan">
+                  <div className={`text-[10px] uppercase tracking-[0.18em] ${isDanger ? "text-destructive" : "text-cyan"}`}>
                     {destination.region}
                   </div>
                   <h3 className="font-display mt-2 text-lg uppercase">{destination.label}</h3>
@@ -513,7 +602,8 @@ function Mars2100() {
                   </Button>
                 </div>
               </motion.article>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -546,9 +636,15 @@ function Mars2100() {
                   </div>
                   <div>
                     <span className="block text-muted-foreground">Surface link</span>
-                    <span className="mt-1 flex items-center gap-2 text-cyan">
-                      <span className="size-1.5 rounded-full bg-cyan" /> Stable
-                    </span>
+                    {activePlace.risk?.dangerLevel === "Extreme" || activePlace.risk?.dangerLevel === "High" ? (
+                      <span className="mt-1 flex items-center gap-2 text-destructive">
+                        <span className="size-1.5 animate-pulse rounded-full bg-destructive" /> {activePlace.risk?.dangerLevel}
+                      </span>
+                    ) : (
+                      <span className="mt-1 flex items-center gap-2 text-cyan">
+                        <span className="size-1.5 rounded-full bg-cyan" /> Stable
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -562,19 +658,21 @@ function Mars2100() {
                     { top: "22%", left: "31%" },
                     { top: "57%", left: "24%" },
                     { top: "42%", left: "70%" },
+                    { top: "65%", left: "52%" },
                   ].map((point, index) => {
                     const destination = destinations[index];
+                    const isDanger = destination?.risk.dangerLevel === "Extreme" || destination?.risk.dangerLevel === "High";
                     return destination ? (
                       <Button
                         key={destination.name}
                         size="icon"
                         variant={activeDestination === index ? "default" : "outline"}
-                        className={`pulse-ring absolute rounded-full ${activeDestination === index ? "scale-110" : ""}`}
+                        className={`pulse-ring absolute rounded-full ${activeDestination === index ? "scale-110" : ""} ${isDanger && activeDestination === index ? "!bg-destructive !text-destructive-foreground !border-destructive" : ""}`}
                         style={point}
                         onClick={() => chooseDestination(index)}
                         aria-label={`Select ${destination.label}`}
                       >
-                        <MapPin />
+                        {isDanger ? <AlertTriangle /> : <MapPin />}
                       </Button>
                     ) : null;
                   })}
@@ -658,19 +756,27 @@ function Mars2100() {
                     </div>
                   )}
                   {step === 3 && (
-                    <div className="grid gap-3 md:grid-cols-3">
-                      {destinations.map((item, index) => (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {destinations.map((item, index) => {
+                        const isDanger = item.risk.dangerLevel === "Extreme" || item.risk.dangerLevel === "High";
+                        return (
                         <Button
                           key={item.name}
                           variant={planner.destination === item.name ? "default" : "outline"}
-                          className="h-auto min-h-32 flex-col items-start whitespace-normal p-4 text-left"
+                          className={`h-auto min-h-32 flex-col items-start whitespace-normal p-4 text-left ${isDanger && planner.destination === item.name ? "!bg-destructive !text-destructive-foreground" : ""}`}
                           onClick={() => chooseDestination(index)}
                         >
-                          <MapPin className="mb-5" />
+                          {isDanger ? <AlertTriangle className="mb-5" /> : <MapPin className="mb-5" />}
                           <span className="font-display text-xs uppercase">{item.name}</span>
                           <span className="mt-2 text-[10px] opacity-70">{item.region}</span>
+                          {isDanger && (
+                            <span className="mt-2 text-[9px] uppercase tracking-[0.14em] text-destructive">
+                              {item.risk.dangerLevel} risk
+                            </span>
+                          )}
                         </Button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   {step === 4 && (
@@ -796,6 +902,7 @@ function Mars2100() {
                   </div>
                 ))}
               </div>
+              <RiskAssessmentDashboard risk={selectedRisk} />
               <div className="border-t border-border pt-5">
                 <div className="flex items-end justify-between">
                   <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -1094,6 +1201,133 @@ function ChoiceGrid({
           {selected === value && <Check className="ml-auto" />}
         </Button>
       ))}
+    </div>
+  );
+}
+
+const dangerColors: Record<DangerLevel, string> = {
+  Low: "oklch(0.72 0.17 162)",
+  Moderate: "oklch(0.82 0.17 84)",
+  High: "oklch(0.76 0.17 54)",
+  Extreme: "oklch(0.577 0.245 27)",
+};
+
+function RiskAssessmentDashboard({ risk }: { risk: RiskData }) {
+  const isExtreme = risk.dangerLevel === "Extreme";
+  const isHigh = risk.dangerLevel === "High";
+  const isDanger = isExtreme || isHigh;
+  const accentColor = dangerColors[risk.dangerLevel];
+
+  return (
+    <div
+      className={`mt-5 border-t border-border pt-5 ${isExtreme ? "animate-pulse" : ""}`}
+      style={isExtreme ? { animationDuration: "2s" } : undefined}
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-cyan">
+          <AlertTriangle className={`size-3 ${isExtreme ? "animate-pulse text-destructive" : isDanger ? "text-destructive" : ""}`} />
+          Risk assessment
+        </span>
+        <span
+          className="text-[9px] font-bold uppercase tracking-[0.16em]"
+          style={{ color: accentColor }}
+        >
+          {risk.dangerLevel}
+        </span>
+      </div>
+
+      {/* Distance bar */}
+      <div className="mb-3">
+        <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="flex items-center gap-1.5"><MapPin className="size-3" /> Distance</span>
+          <span className="text-foreground">{risk.distance}</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-border">
+          <motion.div
+            key={`dist-${risk.distance}`}
+            className="h-full rounded-full"
+            style={{ backgroundColor: accentColor }}
+            initial={{ width: 0 }}
+            animate={{ width: `${risk.distancePercent}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
+        </div>
+      </div>
+
+      {/* Temperature gauge */}
+      <div className="mb-3">
+        <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="flex items-center gap-1.5"><Thermometer className="size-3" /> Temperature</span>
+          <span className="text-foreground">{risk.tempRange}</span>
+        </div>
+        <div className="relative h-1.5 overflow-hidden rounded-full bg-border">
+          <motion.div
+            key={`temp-${risk.tempRange}`}
+            className="h-full rounded-full"
+            style={{
+              background: `linear-gradient(90deg, oklch(0.6 0.2 250), oklch(0.72 0.15 162), ${accentColor})`,
+            }}
+            initial={{ width: 0 }}
+            animate={{ width: `${risk.tempPercent}%` }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
+        </div>
+      </div>
+
+      {/* Terrain badge */}
+      <div className="mb-3">
+        <div className="mb-1.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          Terrain
+        </div>
+        <span
+          className="inline-flex items-center gap-1.5 border px-2 py-1 text-[9px] uppercase tracking-[0.14em]"
+          style={{
+            borderColor: isDanger ? "var(--destructive)" : "var(--border)",
+            color: isDanger ? "var(--destructive)" : "var(--foreground)",
+          }}
+        >
+          <risk.terrainIcon className="size-3" />
+          {risk.terrain}
+        </span>
+      </div>
+
+      {/* Danger level meter */}
+      <div>
+        <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+          <span>Danger level</span>
+          <span className="text-foreground">{risk.dangerScore}/10</span>
+        </div>
+        <div className="flex gap-1">
+          {Array.from({ length: 10 }).map((_, i) => {
+            const filled = i < risk.dangerScore;
+            return (
+              <motion.div
+                key={`danger-${i}`}
+                className="h-3 flex-1 rounded-sm"
+                style={{
+                  backgroundColor: filled ? accentColor : "var(--border)",
+                  boxShadow: filled && isExtreme ? `0 0 6px ${accentColor}` : "none",
+                }}
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                transition={{ delay: i * 0.06, duration: 0.2 }}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {isExtreme && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-3 flex items-center gap-2 text-[9px] uppercase tracking-[0.14em] text-destructive"
+        >
+          <AlertTriangle className="size-3 animate-pulse" />
+          Advanced life-support package mandatory
+        </motion.p>
+      )}
     </div>
   );
 }
