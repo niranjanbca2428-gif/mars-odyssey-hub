@@ -124,6 +124,13 @@ const destinations = [
     image: olympusImage,
     tag: "12 residences left",
     coordinates: "18.65°N · 226.2°E",
+    priceTier: "Signature",
+    amenities: [
+      "Climate-controlled crystal canopy",
+      "Cliff-edge infinity pools",
+      "Private summit observation terrace",
+      "24/7 personal AI butler",
+    ],
     risk: {
       distance: "1,240 km from Elysium Base",
       distancePercent: 25,
@@ -143,6 +150,13 @@ const destinations = [
     image: vallesImage,
     tag: "Private deck available",
     coordinates: "13.9°S · 59.2°W",
+    priceTier: "Voyage",
+    amenities: [
+      "Three-night silent aerial passage",
+      "Panoramic observation deck",
+      "Private dining & sky suite",
+      "Sunrise canyon-rim excursions",
+    ],
     risk: {
       distance: "3,800 km from Elysium Base",
       distancePercent: 55,
@@ -162,6 +176,13 @@ const destinations = [
     image: elysiumImage,
     tag: "Members first",
     coordinates: "24.7°N · 150.0°E",
+    priceTier: "Members",
+    amenities: [
+      "Private villa & personal rover",
+      "After-hours colony gardens",
+      "Dedicated expedition guide",
+      "Colony atelier & maker access",
+    ],
     risk: {
       distance: "0 km (home base)",
       distancePercent: 0,
@@ -182,6 +203,13 @@ const destinations = [
     image: marinerisImage,
     tag: "Extreme risk · 4 slots/year",
     coordinates: "13.9°S · 59.2°W",
+    priceTier: "Expedition",
+    amenities: [
+      "Certified descent master 1:1",
+      "Pressurised mid-cliff camp",
+      "Emergency ascent & O2 rig",
+      "Zero rescue-range clearance briefing",
+    ],
     risk: {
       distance: "4,200 km from Elysium Base",
       distancePercent: 85,
@@ -208,6 +236,48 @@ const activities = [
   "Canyon sky cruise",
   "Colony atelier tour",
   "Marineris cliff descent",
+];
+
+const membershipTiers = [
+  {
+    name: "Explorer",
+    icon: Orbit,
+    price: "Ξ 800K",
+    cadence: "annually",
+    highlight: false,
+    benefits: [
+      "Priority booking on open launch windows",
+      "Shared Astra AI concierge access",
+      "Seasonal colony event invitations",
+      "Standard residence selection",
+    ],
+  },
+  {
+    name: "VIP",
+    icon: Crown,
+    price: "Ξ 2.4M",
+    cadence: "annually",
+    highlight: true,
+    benefits: [
+      "First selection across every launch window",
+      "Dedicated personal AI envoy",
+      "Private colony dinners & closed laboratories",
+      "Complimentary residence upgrades",
+    ],
+  },
+  {
+    name: "Founder",
+    icon: ShieldCheck,
+    price: "By invitation",
+    cadence: "Ares Circle · 210 seats",
+    highlight: false,
+    benefits: [
+      "Guaranteed passage on any window",
+      "Off-chart expeditions incl. Marineris Descent",
+      "Bespoke vessel commissioning",
+      "Lifetime interplanetary standing",
+    ],
+  },
 ];
 
 const initialPlanner: Planner = {
@@ -253,13 +323,34 @@ function Mars2100() {
   const [planner, setPlanner] = useState<Planner>(initialPlanner);
   const [step, setStep] = useState(1);
   const [activeDestination, setActiveDestination] = useState(0);
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const [joinedTier, setJoinedTier] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([assistantGreeting]);
   const [thinking, setThinking] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [countdown, setCountdown] = useState("18:06:42");
+  const [showIntro, setShowIntro] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setShowIntro(false);
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => setShowIntro(false), 4000);
+    return () => {
+      window.clearTimeout(timer);
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showIntro) document.body.style.overflow = "";
+  }, [showIntro]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("mars-2100-concierge");
@@ -394,6 +485,9 @@ function Mars2100() {
 
   return (
     <div className="scanlines starfield min-h-screen overflow-x-hidden bg-background text-foreground">
+      <AnimatePresence>
+        {showIntro ? <IntroSequence onDone={() => setShowIntro(false)} /> : null}
+      </AnimatePresence>
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8">
           <a href="#top" className="flex items-center gap-3" aria-label="Mars 2100 home">
@@ -594,12 +688,16 @@ function Mars2100() {
                   </p>
                   <Button
                     className="mt-5 w-full justify-between"
-                    variant={activeDestination === index ? "default" : "outline"}
-                    onClick={() => chooseDestination(index)}
+                    variant="outline"
+                    onClick={() => setDetailIndex(index)}
                   >
-                    {activeDestination === index ? "Selected" : "View details"}
-                    {activeDestination === index ? <Check /> : <ArrowRight />}
+                    View details <ArrowRight />
                   </Button>
+                  {activeDestination === index && (
+                    <div className={`mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] ${isDanger ? "text-destructive" : "text-cyan"}`}>
+                      <Check className="size-3" /> In your itinerary
+                    </div>
+                  )}
                 </div>
               </motion.article>
               );
@@ -929,45 +1027,81 @@ function Mars2100() {
               title="Membership beyond access"
               copy="A private relationship with Mars, limited to 210 members on Earth."
             />
-            <div className="mt-12 grid gap-px bg-border md:grid-cols-3">
-              {[
-                {
-                  icon: Crown,
-                  title: "Priority passage",
-                  text: "First selection across every launch window and residence release.",
-                },
-                {
-                  icon: Bot,
-                  title: "Personal AI envoy",
-                  text: "A dedicated intelligence that learns how you travel, dine and explore.",
-                },
-                {
-                  icon: Zap,
-                  title: "Unlisted Mars",
-                  text: "Private colony dinners, closed laboratories and off-chart expeditions.",
-                },
-              ].map((benefit) => (
-                <div key={benefit.title} className="bg-background p-8">
-                  <benefit.icon className="mb-10 text-orange" />
-                  <h3 className="font-display text-sm uppercase">{benefit.title}</h3>
-                  <p className="mt-4 text-sm leading-6 text-muted-foreground">{benefit.text}</p>
-                </div>
-              ))}
+            <div className="mt-12 grid gap-5 md:grid-cols-3">
+              {membershipTiers.map((tier) => {
+                const joined = joinedTier === tier.name;
+                const byInvitation = tier.price === "By invitation";
+                return (
+                  <div
+                    key={tier.name}
+                    className={`hud-panel hud-corners relative flex flex-col p-7 ${tier.highlight ? "border-cyan" : ""} ${joined ? "border-cyan" : ""}`}
+                  >
+                    {tier.highlight && (
+                      <span className="absolute right-5 top-5 border border-cyan/60 bg-background/75 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-cyan backdrop-blur">
+                        Most requested
+                      </span>
+                    )}
+                    <tier.icon className="text-orange" />
+                    <h3 className="font-display mt-5 text-lg uppercase">{tier.name}</h3>
+                    <div className="mt-2 font-display text-2xl text-cyan">{tier.price}</div>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                      {tier.cadence}
+                    </span>
+                    <ul className="mt-6 flex-1 space-y-3 border-t border-border pt-6 text-sm leading-5 text-muted-foreground">
+                      {tier.benefits.map((benefit) => (
+                        <li key={benefit} className="flex gap-3">
+                          <Check className="mt-0.5 size-4 shrink-0 text-cyan" />
+                          {benefit}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="mt-6 w-full justify-between"
+                      variant={joined || tier.highlight ? "default" : "outline"}
+                      onClick={() => setJoinedTier(tier.name)}
+                    >
+                      {joined ? (
+                        <>
+                          Membership selected <Check />
+                        </>
+                      ) : (
+                        <>
+                          {byInvitation ? "Request invitation" : `Join ${tier.name}`} <ArrowRight />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
-            <div className="hud-panel hud-corners mt-6 flex flex-col items-start justify-between gap-6 p-7 md:flex-row md:items-center">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-orange">
-                  By private introduction only
-                </div>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  Request consideration for the 2100 Ares Circle intake. Membership begins at Ξ 800K
-                  annually.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setChatOpen(true)}>
-                Request introduction <ArrowRight />
-              </Button>
-            </div>
+            <AnimatePresence>
+              {joinedTier && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  className="hud-panel hud-corners mt-6 flex flex-col items-start justify-between gap-6 p-7 md:flex-row md:items-center"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="grid size-11 shrink-0 place-items-center rounded-full border border-cyan text-cyan">
+                      <Check className="size-5" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-cyan">
+                        {joinedTier} membership reserved
+                      </div>
+                      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                        Your provisional {joinedTier} standing is held. An Ares Circle envoy will
+                        reach you via Earth relay within one orbital day to complete onboarding.
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={() => setChatOpen(true)}>
+                    Speak to concierge <Bot />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </section>
       </main>
@@ -979,6 +1113,116 @@ function Mars2100() {
         </span>
         <span>Singapore · Luna · Olympus</span>
       </footer>
+
+      <AnimatePresence>
+        {detailIndex !== null && destinations[detailIndex] && (() => {
+          const detail = destinations[detailIndex];
+          const detailDanger =
+            detail.risk.dangerLevel === "Extreme" || detail.risk.dangerLevel === "High";
+          const detailSelected = planner.destination === detail.name;
+          return (
+            <motion.div
+              className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-background/90 p-5 backdrop-blur-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDetailIndex(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.94, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.94, y: 20 }}
+                onClick={(event) => event.stopPropagation()}
+                className="hud-panel hud-corners my-auto w-full max-w-3xl overflow-hidden"
+              >
+                <div className="relative aspect-[16/9]">
+                  <img
+                    src={detail.image}
+                    width={1536}
+                    height={1024}
+                    alt={detail.label}
+                    className="size-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                  <span
+                    className={`absolute left-5 top-5 border bg-background/75 px-2 py-1 text-[9px] uppercase tracking-[0.16em] backdrop-blur ${detailDanger ? "border-destructive/60 text-destructive" : "border-orange/60 text-orange"}`}
+                  >
+                    {detailDanger && <AlertTriangle className="mr-1 inline size-3" />}
+                    {detail.tag}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-4 top-4 bg-background/60 backdrop-blur"
+                    onClick={() => setDetailIndex(null)}
+                    aria-label="Close details"
+                  >
+                    <X />
+                  </Button>
+                  <div className="absolute inset-x-5 bottom-4">
+                    <div className={`text-[10px] uppercase tracking-[0.18em] ${detailDanger ? "text-destructive" : "text-cyan"}`}>
+                      {detail.region}
+                    </div>
+                    <h2 className="font-display mt-1 text-2xl uppercase md:text-3xl">
+                      {detail.label}
+                    </h2>
+                  </div>
+                </div>
+                <div className="max-h-[55vh] overflow-y-auto p-6 md:p-8">
+                  <p className="text-sm leading-6 text-muted-foreground">{detail.description}</p>
+                  <div className="mt-6 grid gap-6 md:grid-cols-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.18em] text-cyan">
+                        Signature amenities
+                      </div>
+                      <ul className="mt-4 space-y-3 text-sm leading-5 text-muted-foreground">
+                        {detail.amenities.map((amenity) => (
+                          <li key={amenity} className="flex gap-3">
+                            <Check className="mt-0.5 size-4 shrink-0 text-cyan" />
+                            {amenity}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-5 text-xs">
+                        <div>
+                          <span className="block text-muted-foreground">Coordinates</span>
+                          <span className="mt-1 block text-foreground">{detail.coordinates}</span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Price tier</span>
+                          <span className="mt-1 block font-display uppercase text-foreground">
+                            {detail.priceTier}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <RiskAssessmentDashboard risk={detail.risk} />
+                  </div>
+                  <div className="mt-8 border-t border-border pt-6">
+                    <Button
+                      className={`w-full justify-between ${detailDanger ? "!bg-destructive !text-destructive-foreground hover:!bg-destructive/90" : ""}`}
+                      onClick={() => {
+                        chooseDestination(detailIndex);
+                        setDetailIndex(null);
+                      }}
+                    >
+                      {detailSelected ? (
+                        <>
+                          Selected for journey <Check />
+                        </>
+                      ) : (
+                        <>
+                          Select for journey <ArrowRight />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       <AnimatePresence>
         {confirmed && (
@@ -1143,6 +1387,135 @@ function Mars2100() {
         {chatOpen ? <X /> : <Bot />}
       </Button>
     </div>
+  );
+}
+
+function IntroSequence({ onDone }: { onDone: () => void }) {
+  const streaks = useMemo(
+    () =>
+      Array.from({ length: 34 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        height: 12 + Math.random() * 26,
+        delay: Math.random() * 0.9,
+        duration: 0.5 + Math.random() * 0.5,
+        opacity: 0.35 + Math.random() * 0.6,
+      })),
+    [],
+  );
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-background"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.6, ease: "easeInOut" } }}
+      role="dialog"
+      aria-label="Intro animation"
+    >
+      {/* deep-space backdrop */}
+      <div className="starfield absolute inset-0 opacity-60" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_30%,var(--background)_85%)]" />
+
+      {/* Phase 1: Earth + launching rocket */}
+      <motion.div
+        className="absolute bottom-[-90px] left-[-60px] size-64 rounded-full bg-[radial-gradient(circle_at_35%_30%,oklch(0.7_0.13_230),oklch(0.42_0.12_255)_45%,oklch(0.16_0.06_260)_80%)] shadow-[0_0_120px_oklch(0.6_0.13_240/45%)]"
+        initial={{ scale: 1, opacity: 1 }}
+        animate={{ scale: 0.4, opacity: 0 }}
+        transition={{ delay: 1.1, duration: 1, ease: "easeIn" }}
+        aria-hidden
+      />
+      <motion.div
+        className="absolute left-[10%] bottom-[16%]"
+        initial={{ x: -20, y: 80, opacity: 0, rotate: 28 }}
+        animate={{ x: [-20, 120, 460], y: [80, -80, -520], opacity: [0, 1, 0], rotate: 32 }}
+        transition={{ duration: 1.5, ease: "easeIn", times: [0, 0.35, 1] }}
+        aria-hidden
+      >
+        <div className="relative">
+          <Rocket className="size-10 rotate-45 text-cyan drop-shadow-[0_0_14px_var(--cyan)]" />
+          <span className="intro-rocket-flame absolute -bottom-2 left-1 h-6 w-2 origin-top rounded-full bg-[linear-gradient(to_bottom,var(--orange),transparent)]" />
+        </div>
+      </motion.div>
+
+      {/* Phase 2: warp-speed starfield streaks */}
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ delay: 0.9, duration: 1.5, times: [0, 0.2, 0.7, 1] }}
+        aria-hidden
+      >
+        {streaks.map((s) => (
+          <span
+            key={s.id}
+            className="intro-streak absolute top-0 w-px bg-gradient-to-b from-transparent via-cyan to-transparent"
+            style={{
+              left: `${s.left}%`,
+              height: `${s.height}%`,
+              animationDelay: `${s.delay}s`,
+              animationDuration: `${s.duration}s`,
+              opacity: s.opacity,
+            }}
+          />
+        ))}
+      </motion.div>
+
+      {/* Phase 3: Mars arrival */}
+      <motion.div
+        className="absolute size-72 rounded-full bg-[radial-gradient(circle_at_35%_28%,var(--orange),oklch(0.38_0.14_35)_38%,oklch(0.12_0.04_280)_78%)] shadow-[inset_-30px_-24px_70px_oklch(0.08_0.03_260),0_0_120px_oklch(0.76_0.17_54/30%)]"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.05, 1], opacity: [0, 1, 1] }}
+        transition={{ delay: 1.95, duration: 1.1, ease: "easeOut", times: [0, 0.8, 1] }}
+        aria-hidden
+      >
+        <span className="absolute inset-[14%] rounded-full border border-cyan/15" />
+        <span className="absolute inset-[30%] rounded-full border border-cyan/10" />
+      </motion.div>
+
+      {/* Phase 4: holographic logo assembly */}
+      <motion.div
+        className="relative z-10 text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2.95 }}
+      >
+        <div className="relative inline-block overflow-hidden">
+          <span className="intro-holo-scan absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-cyan/40 to-transparent" />
+          <div className="intro-logo-glitch font-display text-5xl font-bold uppercase tracking-[0.18em] md:text-7xl">
+            Mars <span className="text-cyan">2100</span>
+          </div>
+        </div>
+        <motion.div
+          className="mt-4 text-[11px] font-semibold uppercase tracking-[0.42em] text-muted-foreground"
+          initial={{ opacity: 0, letterSpacing: "0.7em" }}
+          animate={{ opacity: 1, letterSpacing: "0.42em" }}
+          transition={{ delay: 3.4, duration: 0.5 }}
+        >
+          Luxury Interplanetary Travel
+        </motion.div>
+      </motion.div>
+
+      {/* early-phase status line */}
+      <motion.div
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-[0.3em] text-cyan"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 2.9, times: [0, 0.1, 0.75, 1] }}
+        aria-hidden
+      >
+        Launch sequence initiated
+      </motion.div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onDone}
+        className="absolute right-5 top-5 h-9 gap-2 rounded-none border-border bg-background/40 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground backdrop-blur hover:text-cyan"
+      >
+        Skip intro
+        <ChevronRight className="size-3.5" />
+      </Button>
+    </motion.div>
   );
 }
 
