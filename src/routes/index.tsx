@@ -29,9 +29,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import olympusImage from "@/assets/olympus-dome.jpg";
 import vallesImage from "@/assets/valles-cruise.jpg";
 import elysiumImage from "@/assets/elysium-colony.jpg";
-
-const marinerisImage =
-  "https://images.pexels.com/photos/7527862/pexels-photo-7527862.jpeg?auto=compress&cs=tinysrgb&h=650&w=940";
 import {
   Conversation,
   ConversationContent,
@@ -47,6 +44,9 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+
+const marinerisImage =
+  "https://images.pexels.com/photos/7527862/pexels-photo-7527862.jpeg?auto=compress&cs=tinysrgb&h=650&w=940";
 
 export const Route = createFileRoute("/")({
   head: () => ({
