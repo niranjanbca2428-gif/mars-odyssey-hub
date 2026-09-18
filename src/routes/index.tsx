@@ -290,7 +290,7 @@ function Mars2100() {
     }, 950);
   };
 
-  const useRecommendation = (rec: Recommendation) => {
+  const applyRecommendation = (rec: Recommendation) => {
     setPlanner((current) => ({
       ...current,
       destination: rec.destination,
@@ -987,7 +987,7 @@ function Mars2100() {
                           size="sm"
                           className="mt-3 self-start"
                           onClick={() =>
-                            useRecommendation(message.recommendation as Recommendation)
+                            applyRecommendation(message.recommendation as Recommendation)
                           }
                         >
                           Use this recommendation <ArrowRight />
