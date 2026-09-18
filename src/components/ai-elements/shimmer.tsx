@@ -21,10 +21,7 @@ const ShimmerComponent = ({
 }: TextShimmerProps) => {
   return (
     <Component
-      className={cn(
-        "relative inline-block animate-pulse text-muted-foreground",
-        className
-      )}
+      className={cn("relative inline-block animate-pulse text-muted-foreground", className)}
       data-duration={duration}
     >
       {children}

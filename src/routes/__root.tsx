@@ -78,10 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Mars 2100" },
-      { name: "description", content: "Luxury interplanetary journeys, curated for life beyond Earth." },
+      {
+        name: "description",
+        content: "Luxury interplanetary journeys, curated for life beyond Earth.",
+      },
       { name: "author", content: "Mars 2100" },
       { property: "og:title", content: "Mars 2100" },
-      { property: "og:description", content: "Luxury interplanetary journeys, curated for life beyond Earth." },
+      {
+        property: "og:description",
+        content: "Luxury interplanetary journeys, curated for life beyond Earth.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
